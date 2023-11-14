@@ -1,0 +1,56 @@
+include gdrive-sheets
+include data-source
+include shared-gdrive("dcic-2021", "1wyQZj_L0qqV9Ekgr9au6RX2iqt2Ga8Ep")
+
+# Rydder data. "energi" data behandles som strenger. 
+ssid = "1RYN0i4Zx_UETVuYacgaGfnFcv4l9zd9toQTTdkQkj7g"
+kWh-wealthy-consumer-data =
+load-table: komponent, energi
+source: load-spreadsheet(ssid).sheet-by-name("kWh", true)
+    sanitize energi using string-sanitizer
+end
+kWh-wealthy-consumer-data 
+
+
+# Transformerer strenger til tall. 
+fun energi-to-number(str :: String) -> Number:
+ 
+  
+  # Returnerer et streng til tall, "some (a)" hvis vellykket, "none" hvis ikke. Tall på "none" er beregnet fra "withouthotair.com". 
+  cases(Option) string-to-number(str):
+    | some(a) => a
+    | none => 40
+  end
+  # Test av funksjon. 
+where:
+  energi-to-number("0") is 0
+energi-to-number("48") is 48
+end
+
+
+# Transfomerer "energi" kolonnen i "kWh-wealthy-consumer-data" tabellen og legger til ny verdi i kolonnen med "energi-to-number"-fun. Ny tabell lagres som "energi-er-goy". 
+energi-er-goy= transform-column(kWh-wealthy-consumer-data, "energi", energi-to-number)
+energi-er-goy
+
+
+#Beregning av energiforbruk per dag. 
+#informasjon og formel for å utføre beregning av energi brukt per dag basert på funnet gj distanse reist per dag, distanse per  av drivstoff-enhet. Og energi brukt per enhet av drivstoff. 
+distance-travelled-per-day = 30
+distance-per-unit-of-fuel = 15
+energy-per-unit-of-fuel = 10
+
+
+energy-per-day = ( distance-travelled-per-day / 
+                            distance-per-unit-of-fuel ) * 
+                                        energy-per-unit-of-fuel
+
+
+energy-per-day
+
+# Summerer verdier i "energi"-kolonne for å få totalt energiforbruk. 
+energiforbruk = sum(energi-er-goy, "energi")
+energiforbruk
+
+
+#Lag et stolpediagram. 
+bar-chart(energi-er-goy, "komponent", "energi")
